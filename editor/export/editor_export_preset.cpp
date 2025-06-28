@@ -496,6 +496,33 @@ int EditorExportPreset::get_script_export_mode() const {
 	return script_mode;
 }
 
+void EditorExportPreset::set_script_obfuscation(bool p_enabled) {
+	script_obfuscation = p_enabled;
+	EditorExport::singleton->save_presets();
+}
+
+bool EditorExportPreset::get_script_obfuscation() const {
+	return script_obfuscation;
+}
+
+void EditorExportPreset::set_remove_prints(bool p_enabled) {
+	remove_prints = p_enabled;
+	EditorExport::singleton->save_presets();
+}
+
+bool EditorExportPreset::get_remove_prints() const {
+	return remove_prints;
+}
+
+void EditorExportPreset::set_script_obfuscation_seed(const String &p_value) {
+	obfuscation_seed = p_value;
+	EditorExport::singleton->save_presets();
+}
+
+String EditorExportPreset::get_script_obfuscation_seed() const {
+	return obfuscation_seed;
+}
+
 Variant EditorExportPreset::get_or_env(const StringName &p_name, const String &p_env_var, bool *r_valid) const {
 	const String from_env = OS::get_singleton()->get_environment(p_env_var);
 	if (!from_env.is_empty()) {

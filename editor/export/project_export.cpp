@@ -415,6 +415,14 @@ void ProjectExportDialog::_edit_preset(int p_index) {
 
 	int script_export_mode = current->get_script_export_mode();
 	script_mode->select(script_export_mode);
+	bool script_obfuscation = current->get_script_obfuscation();
+	obfuscate->set_pressed(script_obfuscation);
+	bool script_remove_prints = current->get_remove_prints();
+	remove_prints->set_pressed(script_remove_prints);
+	remove_prints->set_disabled(!script_obfuscation);
+	String script_obfuscation_seed = current->get_script_obfuscation_seed();
+	obfuscate_seed->set_text(script_obfuscation_seed);
+	obfuscate_seed->set_editable(script_obfuscation);
 
 	updating = false;
 }
@@ -657,6 +665,45 @@ void ProjectExportDialog::_script_export_mode_changed(int p_mode) {
 	ERR_FAIL_COND(current.is_null());
 
 	current->set_script_export_mode(p_mode);
+
+	_update_current_preset();
+}
+
+void ProjectExportDialog::_script_obfuscation_changed(bool p_pressed) {
+	if (updating) {
+		return;
+	}
+
+	Ref<EditorExportPreset> current = get_current_preset();
+	ERR_FAIL_COND(current.is_null());
+
+	current->set_script_obfuscation(p_pressed);
+
+	_update_current_preset();
+}
+
+void ProjectExportDialog::_remove_prints_changed(bool p_pressed) {
+	if (updating) {
+		return;
+	}
+
+	Ref<EditorExportPreset> current = get_current_preset();
+	ERR_FAIL_COND(current.is_null());
+
+	current->set_remove_prints(p_pressed);
+
+	_update_current_preset();
+}
+
+void ProjectExportDialog::_script_obfuscation_seed_changed(const String &p_value) {
+	if (updating) {
+		return;
+	}
+
+	Ref<EditorExportPreset> current = get_current_preset();
+	ERR_FAIL_COND(current.is_null());
+
+	current->set_script_obfuscation_seed(p_value);
 
 	_update_current_preset();
 }
@@ -1680,6 +1727,21 @@ ProjectExportDialog::ProjectExportDialog() {
 	script_mode->add_item(TTR("Compressed binary tokens (smaller files)"), (int)EditorExportPreset::MODE_SCRIPT_BINARY_TOKENS_COMPRESSED);
 	script_mode->connect(SceneStringName(item_selected), callable_mp(this, &ProjectExportDialog::_script_export_mode_changed));
 
+	obfuscate = memnew(CheckButton);
+	obfuscate->connect(SceneStringName(toggled), callable_mp(this, &ProjectExportDialog::_script_obfuscation_changed));
+	obfuscate->set_text(TTR("Obfuscate GDScript"));
+	obfuscate_seed = memnew(LineEdit);
+	obfuscate_seed->connect(SceneStringName(text_changed), callable_mp(this, &ProjectExportDialog::_script_obfuscation_seed_changed));
+	remove_prints = memnew(CheckButton);
+	remove_prints->connect(SceneStringName(toggled), callable_mp(this, &ProjectExportDialog::_remove_prints_changed));
+	remove_prints->set_text(TTR("Remove Print Statements"));
+	Label *seed_info = memnew(Label);
+	seed_info->set_text(TTR("Note: An empty seed will result in each export\ngenerating a new random seed."));
+	script_vb->add_margin_child(TTR("GDScript Obfuscation:"), obfuscate);
+	script_vb->add_child(remove_prints);
+	script_vb->add_margin_child(TTR("GDScript Obfuscation Seed:"), obfuscate_seed);
+	script_vb->add_child(seed_info);
+
 	sections->add_child(script_vb);
 
 	sections->connect("tab_changed", callable_mp(this, &ProjectExportDialog::_tab_changed));
@@ -1693,6 +1755,8 @@ ProjectExportDialog::ProjectExportDialog() {
 	delete_preset->set_disabled(true);
 	script_key_error->hide();
 	sections->hide();
+	remove_prints->set_disabled(true);
+	obfuscate_seed->set_editable(false);
 	parameters->edit(nullptr);
 
 	// Deletion dialog.

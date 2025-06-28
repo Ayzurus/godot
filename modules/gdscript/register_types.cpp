@@ -30,8 +30,14 @@
 
 #include "register_types.h"
 
+#include "core/config/project_settings.h"
+#include "core/error/error_macros.h"
+#include "core/io/config_file.h"
+#include "core/io/dir_access.h"
+#include "core/string/print_string.h"
 #include "gdscript.h"
 #include "gdscript_cache.h"
+#include "gdscript_obfuscator.h"
 #include "gdscript_parser.h"
 #include "gdscript_tokenizer_buffer.h"
 #include "gdscript_utility_functions.h"
@@ -70,6 +76,7 @@ GDScriptLanguage *script_language_gd = nullptr;
 Ref<ResourceFormatLoaderGDScript> resource_loader_gd;
 Ref<ResourceFormatSaverGDScript> resource_saver_gd;
 GDScriptCache *gdscript_cache = nullptr;
+GDScriptObfuscator *gdscript_obfuscator = nullptr;
 
 #ifdef TOOLS_ENABLED
 
@@ -80,19 +87,43 @@ class EditorExportGDScript : public EditorExportPlugin {
 
 	static constexpr int DEFAULT_SCRIPT_MODE = EditorExportPreset::MODE_SCRIPT_BINARY_TOKENS_COMPRESSED;
 	int script_mode = DEFAULT_SCRIPT_MODE;
+	bool obfuscation = false;
+	uint64_t obfuscation_seed = 0;
 
 protected:
 	virtual void _export_begin(const HashSet<String> &p_features, bool p_debug, const String &p_path, int p_flags) override {
 		script_mode = DEFAULT_SCRIPT_MODE;
+		obfuscation = false;
+		obfuscation_seed = 0;
 
+		TypedArray<Dictionary> cached_classes = ProjectSettings::get_singleton()->get_global_class_list();
 		const Ref<EditorExportPreset> &preset = get_export_preset();
 		if (preset.is_valid()) {
 			script_mode = preset->get_script_export_mode();
+			obfuscation = preset->get_script_obfuscation();
+
+			if (obfuscation) {
+				gdscript_obfuscator->reset_symbols();
+
+				bool remove_prints = preset->get_remove_prints();
+				gdscript_obfuscator->set_remove_prints(remove_prints);
+
+				String seed = preset->get_script_obfuscation_seed();
+				obfuscation_seed = seed.is_empty() ? Math::rand() : seed.hash();
+
+				gdscript_obfuscator->obfuscate_script_classes(&obfuscation_seed);
+				cached_classes = gdscript_obfuscator->obfuscate_class_cache(cached_classes);
+			}
 		}
+
+		ConfigFile cache_file;
+		cache_file.set_value("", "list", cached_classes);
+		Error cache_error = cache_file.save(ProjectSettings::get_singleton()->get_exported_global_class_list_path());
+		ERR_FAIL_COND_MSG(cache_error != OK, "Failed to write the exported global class cache.");
 	}
 
 	virtual void _export_file(const String &p_path, const String &p_type, const HashSet<String> &p_features) override {
-		if (p_path.get_extension() != "gd" || script_mode == EditorExportPreset::MODE_SCRIPT_TEXT) {
+		if (p_path.get_extension() != "gd" || (script_mode == EditorExportPreset::MODE_SCRIPT_TEXT && !obfuscation)) {
 			return;
 		}
 
@@ -101,15 +132,25 @@ protected:
 			return;
 		}
 
+		String file_path = p_path.get_basename() + (script_mode == EditorExportPreset::MODE_SCRIPT_TEXT ? ".gd" : ".gdc");
 		String source;
 		source.parse_utf8(reinterpret_cast<const char *>(file.ptr()), file.size());
-		GDScriptTokenizerBuffer::CompressMode compress_mode = script_mode == EditorExportPreset::MODE_SCRIPT_BINARY_TOKENS_COMPRESSED ? GDScriptTokenizerBuffer::COMPRESS_ZSTD : GDScriptTokenizerBuffer::COMPRESS_NONE;
-		file = GDScriptTokenizerBuffer::parse_code_string(source, compress_mode);
+		if (obfuscation) {
+			source = gdscript_obfuscator->obfuscate_source_code(source, p_path, &obfuscation_seed);
+		}
+
+		if (script_mode == EditorExportPreset::MODE_SCRIPT_TEXT) {
+			file = source.to_utf8_buffer();
+		} else {
+			GDScriptTokenizerBuffer::CompressMode compress_mode = script_mode == EditorExportPreset::MODE_SCRIPT_BINARY_TOKENS_COMPRESSED ? GDScriptTokenizerBuffer::COMPRESS_ZSTD : GDScriptTokenizerBuffer::COMPRESS_NONE;
+			file = GDScriptTokenizerBuffer::parse_code_string(source, compress_mode);
+		}
+
 		if (file.is_empty()) {
 			return;
 		}
 
-		add_file(p_path.get_basename() + ".gdc", file, true);
+		add_file(file_path, file, true);
 	}
 
 public:
@@ -151,6 +192,7 @@ void initialize_gdscript_module(ModuleInitializationLevel p_level) {
 		ResourceSaver::add_resource_format_saver(resource_saver_gd);
 
 		gdscript_cache = memnew(GDScriptCache);
+		gdscript_obfuscator = memnew(GDScriptObfuscator);
 
 		GDScriptUtilityFunctions::register_functions();
 	}
@@ -178,6 +220,10 @@ void uninitialize_gdscript_module(ModuleInitializationLevel p_level) {
 
 		if (gdscript_cache) {
 			memdelete(gdscript_cache);
+		}
+
+		if (gdscript_obfuscator) {
+			memdelete(gdscript_obfuscator);
 		}
 
 		if (script_language_gd) {

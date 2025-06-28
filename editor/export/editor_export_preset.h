@@ -96,6 +96,9 @@ private:
 
 	String script_key;
 	int script_mode = MODE_SCRIPT_BINARY_TOKENS_COMPRESSED;
+	bool script_obfuscation = false;
+	bool remove_prints = false;
+	String obfuscation_seed;
 
 protected:
 	bool _set(const StringName &p_name, const Variant &p_value);
@@ -180,6 +183,15 @@ public:
 
 	void set_script_export_mode(int p_mode);
 	int get_script_export_mode() const;
+
+	void set_script_obfuscation(bool p_enabled);
+	bool get_script_obfuscation() const;
+
+	void set_remove_prints(bool p_enabled);
+	bool get_remove_prints() const;
+
+	void set_script_obfuscation_seed(const String &p_value);
+	String get_script_obfuscation_seed() const;
 
 	Variant _get_or_env(const StringName &p_name, const String &p_env_var) const {
 		return get_or_env(p_name, p_env_var);

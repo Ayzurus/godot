@@ -92,6 +92,9 @@ void EditorExport::_save() {
 		config->set_value(section, "encrypt_pck", preset->get_enc_pck());
 		config->set_value(section, "encrypt_directory", preset->get_enc_directory());
 		config->set_value(section, "script_export_mode", preset->get_script_export_mode());
+		config->set_value(section, "script_obfuscation", preset->get_script_obfuscation());
+		config->set_value(section, "remove_prints", preset->get_remove_prints());
+		config->set_value(section, "obfuscation_seed", preset->get_script_obfuscation_seed());
 		credentials->set_value(section, "script_encryption_key", preset->get_script_encryption_key());
 
 		String option_section = "preset." + itos(i) + ".options";
@@ -307,6 +310,9 @@ void EditorExport::load_config() {
 		preset->set_exclude_filter(config->get_value(section, "exclude_filter"));
 		preset->set_export_path(config->get_value(section, "export_path", ""));
 		preset->set_script_export_mode(config->get_value(section, "script_export_mode", EditorExportPreset::MODE_SCRIPT_BINARY_TOKENS_COMPRESSED));
+		preset->set_script_obfuscation(config->get_value(section, "script_obfuscation", false));
+		preset->set_remove_prints(config->get_value(section, "remove_prints", false));
+		preset->set_script_obfuscation_seed(config->get_value(section, "obfuscation_seed", ""));
 		preset->set_patches(config->get_value(section, "patches", Vector<String>()));
 
 		if (config->has_section_key(section, "seed")) {

@@ -132,6 +132,8 @@ GDScriptParser::GDScriptParser() {
 		register_annotation(MethodInfo("@warning_ignore_restore", PropertyInfo(Variant::STRING, "warning")), AnnotationInfo::STANDALONE, &GDScriptParser::warning_ignore_region_annotations, varray(), true);
 		// Networking.
 		register_annotation(MethodInfo("@rpc", PropertyInfo(Variant::STRING, "mode"), PropertyInfo(Variant::STRING, "sync"), PropertyInfo(Variant::STRING, "transfer_mode"), PropertyInfo(Variant::INT, "transfer_channel")), AnnotationInfo::FUNCTION, &GDScriptParser::rpc_annotation, varray("authority", "call_remote", "unreliable", 0));
+		// Obfuscation.
+		register_annotation(MethodInfo("@keep"), AnnotationInfo::CLASS_LEVEL, &GDScriptParser::keep_annotation, varray(), true);
 	}
 
 #ifdef DEBUG_ENABLED
@@ -4281,6 +4283,21 @@ bool GDScriptParser::onready_annotation(AnnotationNode *p_annotation, Node *p_ta
 	}
 	variable->onready = true;
 	current_class->onready_used = true;
+	return true;
+}
+
+bool GDScriptParser::keep_annotation(AnnotationNode *p_annotation, Node *p_target, ClassNode *p_class) {
+	ERR_FAIL_COND_V_MSG(p_target->type != Node::CLASS && p_target->type != Node::CONSTANT && p_target->type != Node::SIGNAL &&
+					p_target->type != Node::VARIABLE && p_target->type != Node::FUNCTION && p_target->type != Node::ENUM,
+			false,
+			R"("@keep" annotation can only be applied to classes, enums, consts, signals, variables and functions.)");
+
+	if (p_target->name_kept) {
+		push_error(R"("@keep" annotation can only be applied once per member.)", p_annotation);
+		return false;
+	}
+
+	p_target->name_kept = true;
 	return true;
 }
 

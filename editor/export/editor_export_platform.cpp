@@ -986,8 +986,6 @@ Dictionary EditorExportPlatform::get_internal_export_files(const Ref<EditorExpor
 Vector<String> EditorExportPlatform::get_forced_export_files() {
 	Vector<String> files;
 
-	files.push_back(ProjectSettings::get_singleton()->get_global_class_list_path());
-
 	String icon = ResourceUID::ensure_path(GLOBAL_GET("application/config/icon"));
 	String splash = ResourceUID::ensure_path(GLOBAL_GET("application/boot_splash/image"));
 	if (!icon.is_empty() && FileAccess::exists(icon)) {
@@ -1548,6 +1546,13 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 			//old remap mode, will still work, but it's unused because it's not multiple pck export friendly
 			custom_map["path_remap/remapped_paths"] = path_remaps;
 		}
+	}
+
+	// exported version of the global script cache
+	Vector<uint8_t> script_cache = FileAccess::get_file_as_bytes(ProjectSettings::get_singleton()->get_exported_global_class_list_path());
+	err = save_proxy.save_file(p_udata, ProjectSettings::get_singleton()->get_global_class_list_path(), script_cache, idx, total, enc_in_filters, enc_ex_filters, key, seed);
+	if (err != OK) {
+		return err;
 	}
 
 	Vector<String> forced_export = get_forced_export_files();

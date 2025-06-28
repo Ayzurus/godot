@@ -175,6 +175,9 @@ class ProjectExportDialog : public ConfirmationDialog {
 	LineEdit *seed_input = nullptr;
 
 	OptionButton *script_mode = nullptr;
+	CheckButton *obfuscate = nullptr;
+	CheckButton *remove_prints = nullptr;
+	LineEdit *obfuscate_seed = nullptr;
 
 	void _open_export_template_manager();
 
@@ -202,6 +205,9 @@ class ProjectExportDialog : public ConfirmationDialog {
 	bool _validate_script_encryption_key(const String &p_key);
 
 	void _script_export_mode_changed(int p_mode);
+	void _script_obfuscation_changed(bool p_pressed);
+	void _remove_prints_changed(bool p_pressed);
+	void _script_obfuscation_seed_changed(const String &p_value);
 
 	void _open_key_help_link();
 

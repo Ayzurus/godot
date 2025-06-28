@@ -1279,6 +1279,10 @@ String ProjectSettings::get_global_class_list_path() const {
 	return get_project_data_path().path_join("global_script_class_cache.cfg");
 }
 
+String ProjectSettings::get_exported_global_class_list_path() const {
+	return get_project_data_path().path_join("exported").path_join("global_script_class_cache.cfg");
+}
+
 void ProjectSettings::store_global_class_list(const Array &p_classes) {
 	Ref<ConfigFile> cf;
 	cf.instantiate();
